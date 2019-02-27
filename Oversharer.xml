@@ -1,0 +1,51 @@
+<GuiXml>
+    <Controls>
+        <TopLevelControl name="OversharerDialog" mouseEnabled="true" movable="true" clampedToScreen="true">
+            <Dimensions x="400" y="300" />
+            <Anchor point="BOTTOM" relativeTo="GuiRoot" relativePoint="CENTER" offsetY="-20" />
+
+            <Controls>
+                <Backdrop name="$(parent)BG" inherits="ZO_DefaultBackdrop" />
+
+                <Label name="$(parent)WindowTitle" font="ZoFontAnnounceMedium" text="|c8080ffOVERSHARER|">
+					<Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT" />
+				</Label>
+
+                <Texture name="$(parent)TopDivider" textureFile="/esoui/art/miscellaneous/horizontaldivider.dds" tier="HIGH">
+					<Dimensions x="400" y="4"/>
+					<Anchor point="TOP" relativeTo="$(parent)" offsetY="32" />
+				</Texture>
+
+                <Button name="$(parent)ButtonCloseAddon" inherits="ZO_ButtonBehaviorClickSound">
+					<Dimensions x="40" y="40" />
+					<Anchor point="TOPRIGHT" relativeTo="$(parent)" relativePoint="TOPRIGHT" offsetX="15" />
+					<Textures normal="EsoUI/Art/Buttons/closebutton_up.dds"
+						pressed="EsoUI/Art/Buttons/closebutton_down.dds"
+						mouseOver="EsoUI/Art/Buttons/closebutton_mouseover.dds"
+						disabled="EsoUI/Art/Buttons/closebutton_disabled.dds"/>
+				</Button>
+
+                <Button name="$(parent)TestButton" text="Test" font="ZoFontGame" hidden="false" inherits="ZO_DefaultButton">
+                    <Dimensions x="150" y="30" />
+                    <Anchor point="BOTTOM" relativeTo="$(parent)" relativePoint="BOTTOM" offsetX="0" offsetY="-10" />
+                </Button>
+            </Controls>
+        </TopLevelControl>
+
+        <Control name="OversharerCheckboxRowTemplate" virtual="true" mouseEnabled="true" horizontalAlignment="LEFT" verticalAlignment="CENTER">
+            <Dimensions x="400" y="30" />
+            <Controls>
+                <Texture name="$(parent)BG" inherits="ZO_ThinListBgStrip" />
+                <Label name="$(parent)Name" hidden="false" mouseEnabled="false" font="ZoFontWinH4" color="ffffff" inheritAlpha="true" verticalAlignment="CENTER" horizontalAlignment="LEFT" resizeToFitDescendents="false">
+                    <Dimensions x="250" y="30" />
+                    <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT" offsetX="8" offsetY="2" />
+                </Label>
+                <Button name="$(parent)Check" hidden="false" inherits="ZO_CheckButton" text="only" verticalAlignment="CENTER" horizontalAlignment="CENTER">
+                    <Dimensions x="20" y="20" />
+                    <Anchor point="TOPRIGHT" relativeTo="$(parent)Name" relativePoint="TOPRIGHT" offsetX="10" offsetY="5" />
+                </Button>
+            </Controls>
+        </Control>
+
+    </Controls>
+</GuiXml>

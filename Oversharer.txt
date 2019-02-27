@@ -1,0 +1,18 @@
+## Title: Oversharer
+## AddOnVersion: 1
+## APIVersion: 100026
+## Version: 1.0.0
+## Author: flipswitchingmonkey
+## SavedVariables: OversharerSavedVariables
+## OptionalDependsOn: LibAddonMenu-2.0 LibStub
+
+# This Add-on is not created by, affiliated with, or sponsored by, ZeniMax Media Inc. or its affiliates.
+# The Elder Scrolls� and related logos are registered trademarks or trademarks of ZeniMax Media Inc. in the United States
+# and/or other countries. All rights reserved.
+
+Lang\en.lua
+Lang\$(language).lua
+
+Oversharer.lua
+Oversharer.xml
+Bindings.xml
