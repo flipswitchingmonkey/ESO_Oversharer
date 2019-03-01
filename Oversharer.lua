@@ -1,15 +1,133 @@
+local libScroll = LibStub:GetLibrary("LibScroll")
+
 Oversharer = {}
 Oversharer.name = "Oversharer"
 Oversharer.pattern = "::OS::"
 Oversharer.writeNoteSemaphore = false
 Oversharer.newGuildNoteGlobal = ""
--- Oversharer.patternNoEscape = "$$OS:"
+Oversharer.DEFAULT_TEXT = ZO_ColorDef:New(0.4627, 0.737, 0.7647, 1)
+Oversharer.scrollList = nil
+Oversharer.dataItems = {}
+
+function Oversharer.SetupDataRow(rowControl, data, scrollList)
+    -- Do whatever you want/need to setup the control
+    rowControl.data = data
+    rowControl.name = GetControl(rowControl, "Name")
+    rowControl.time = GetControl(rowControl, "Time")
+    rowControl.quest = GetControl(rowControl, "Quest")
+    rowControl.action = GetControl(rowControl, "Action")
+
+    rowControl.name:SetText(data.name)
+    rowControl.time:SetText(data.time)
+    rowControl.quest:SetText(data.quest)
+    rowControl.action:SetText(data.action)
+
+    rowControl.name.normalColor = Oversharer.DEFAULT_TEXT
+    rowControl.time.normalColor = Oversharer.DEFAULT_TEXT
+    rowControl.quest.normalColor = Oversharer.DEFAULT_TEXT
+    rowControl.action.normalColor = Oversharer.DEFAULT_TEXT
+    -- rowControl:SetText(data.name)
+    rowControl:SetFont("ZoFontWinH4")
+end
+
+function Oversharer.SortScrollListByName(objA, objB)
+  return objA.data.name < objB.data.name
+end
+
+function Oversharer.SortScrollListByNameRev(objA, objB)
+  return objA.data.name > objB.data.name
+end
+
+function Oversharer.SortScrollListByTime(objA, objB)
+  return objA.data.time < objB.data.time
+end
+
+function Oversharer.SortScrollListByTimeRev(objA, objB)
+  return objA.data.time > objB.data.time
+end
+
+function Oversharer.SortScrollListByQuest(objA, objB)
+  return objA.data.quest < objB.data.quest
+end
+
+function Oversharer.SortScrollListByQuestRev(objA, objB)
+  return objA.data.quest > objB.data.quest
+end
+
+function Oversharer.SortScrollListByAction(objA, objB)
+  return objA.data.action < objB.data.action
+end
+
+function Oversharer.SortScrollListByActionRev(objA, objB)
+  return objA.data.action > objB.data.action
+end
+
+-- Function that creates the scrollList 
+function Oversharer:CreateScrollList()
+    -- local mainWindow = CreateMainWindow()
+    
+    -- Create the scrollData table for your scrollList
+    local scrollData = {
+    name    = "OversharerEvents",
+    parent  = OversharerDialog,
+    width   = 530,
+    height  = 350,
+    
+    rowHeight       = 23,
+    rowTemplate     = "OversharerEntryRow",
+    setupCallback   = Oversharer.SetupDataRow,
+    sortFunction    = Oversharer.SortScrollListByTime,
+    -- selectTemplate  = "EmoteItSelectTemplate",
+    -- selectCallback  = OnRowSelection,
+    
+    -- dataTypeSelectSound = SOUNDS.BOOK_CLOSE,
+    -- hideCallback    = OnRowHide,
+    -- resetCallback   = OnRowReset,
+    
+    -- categories  = {1, 2},
+    }
+    
+    -- Call the libraries CreateScrollList
+    Oversharer.scrollList = libScroll:CreateScrollList(scrollData)
+    -- Anchor it however you want
+    Oversharer.scrollList:SetAnchor(TOPLEFT, OversharerDialogHeaders, BOTTOMLEFT, 10, 10)
+    Oversharer.scrollList:SetAnchor(BOTTOMRIGHT, OversharerDialog, BOTTOMRIGHT, -10, -40)
+    local dt = zo_strformat("<<1>> <<2>>", GetDateStringFromTimestamp(GetTimeStamp()), GetTimeString())
+    -- create the tables for your scrollLists data items
+    Oversharer.dataItems = {
+        [1] = {time=dt, quest="some quest", action="some action", name="playerName"},
+        [2] = {time=dt, quest="some quest", action="some action", name="playerName"},
+        [3] = {time=dt, quest="some quest", action="some action", name="playerName"},
+        [4] = {time=dt, quest="some quest", action="some action", name="playerName"},
+        [5] = {time=dt, quest="some quest", action="some action", name="playerName"},
+        [6] = {time=dt, quest="some quest", action="some action", name="playerName"},
+        [7] = {time=dt, quest="some quest", action="some action", name="playerName"},
+        [8] = {time=dt, quest="some quest", action="some action", name="playerName"},
+        [9] = {time=dt, quest="some quest", action="some action", name="playerName"},
+    }
+      -- Call Update to add the data items to the scrollList
+    Oversharer.scrollList:Update(Oversharer.dataItems)
+end
 
 function Oversharer:Initialize()
   self.hidden = false
 
+  -- Create the scrollList
+  Oversharer:CreateScrollList()
+
+  local defaults = {
+    selectedGuildId = 1,
+    left = 100,
+    top = 100,
+    width = 500,
+    height = 500,
+    guildEnabledSend = {false,false,false,false,false},
+    guildEnabledReceive = {false,false,false,false,false},
+    guildEnabledChatNotify = {false,false,false,false,false}
+  }
+
   -- SET UP SAVED VARIABLES FOR OFFLINE STORAGE
-  self.savedVariables = ZO_SavedVars:New("OversharerSavedVariables", 1, nil, {})
+  self.savedVariables = ZO_SavedVars:NewAccountWide("OversharerSavedVariables", 1, nil, defaults)
 
   -- REGISTER SLASH COMMANDS
   if GetDisplayName() == "@flipswitchingmonkey" then
@@ -24,16 +142,182 @@ function Oversharer:Initialize()
   Oversharer:initWindow()
 end
 
+--------------------
+-- UI RELATED STUFF
+--------------------
+
 function Oversharer:initWindow()
-  OversharerDialog:SetHandler("OnMoveStop", Oversharer.OnOversharerDialog_MoveStop)
+  OversharerDialog:SetHandler("OnMoveStop", function (control)
+    Oversharer.savedVariables.left = OversharerDialog:GetLeft()
+    Oversharer.savedVariables.top = OversharerDialog:GetTop()
+  end)
+  OversharerDialog:SetHandler("OnResizeStop", function(control)
+    local width, height = control:GetDimensions()
+    Oversharer.savedVariables.width = width
+    Oversharer.savedVariables.height = height
+    Oversharer.scrollList:SetAnchor(BOTTOMRIGHT, OversharerDialog, BOTTOMRIGHT, -10, -40)
+  end)
   OversharerDialogTestButton:SetText("TestButton")
   OversharerDialogTestButton:SetHandler("OnClicked", Oversharer.TestButton_Clicked)
   OversharerDialogButtonCloseAddon:SetHandler("OnClicked", Oversharer.ToggleMainWindow)
 
-  Oversharer:AddCheckboxRows()
+  -- local sc = WINDOW_MANAGER:GetControlByName("OversharerDialog")
+  -- local guildComboBoxControl = sc:GetNamedChild("Guild")
+  -- self.guildComboBox = ZO_ComboBox_ObjectFromContainer(guildComboBoxControl)
+  self.OnGuildSelectedCallback = function(_, _, entry)
+        self:OnGuildSelected(entry)
+    end
+
+  self.guildComboBox = Oversharer:FindComboBox()
+  self.guildComboBox:SetSortsItems(false)
+  self.guildComboBox:SetFont("ZoFontHeader")
+  self.guildComboBox:SetSpacing(4)
+  
+  Oversharer:RefreshGuildList()
+  -- Oversharer:SelectGuildComboBox(self.savedVariables.selectedGuildId)
+  Oversharer:OnGuildSelected(self.guildComboEntries[self.savedVariables.selectedGuildId])
+  ZO_CheckButton_SetToggleFunction(OversharerDialogSendCheck, Oversharer.SendCheckButton_OnToggle)
+  ZO_CheckButton_SetToggleFunction(OversharerDialogReceiveCheck, Oversharer.ReceiveCheckButton_OnToggle)
+  ZO_CheckButton_SetToggleFunction(OversharerDialogChatNotifyCheck, Oversharer.ChatNotifyCheckButton_OnToggle)
+
+  -- Oversharer:AddCheckboxRows()
   self:RestorePosition()
 end
 
+function Oversharer:RefreshGuildList()
+  self.guildComboEntries = {}
+  self.guildComboBox:ClearItems()
+  for i = 1, GetNumGuilds() do
+      local guildId = GetGuildId(i)
+      if(not self.filterFunction or self.filterFunction(guildId)) then
+          local guildName = GetGuildName(guildId)
+          local guildAlliance = GetGuildAlliance(guildId) 
+          local guildText = zo_iconTextFormat(GetAllianceBannerIcon(guildAlliance), 24, 24, guildName)
+          local entry = self.guildComboBox:CreateItemEntry(guildText, self.OnGuildSelectedCallback)
+          entry.guildId = guildId
+          entry.guildText = guildText
+      self.guildComboEntries[guildId] = entry
+          self.guildComboBox:AddItem(entry)
+      end
+  end
+
+  if(next(self.guildComboEntries) == nil) then
+      return false
+  end
+
+  return true
+end
+
+function Oversharer:FindComboBox()
+  local sc = WINDOW_MANAGER:GetControlByName("OversharerDialog")
+  local guildComboBoxControl = sc:GetNamedChild("Guild")
+  return ZO_ComboBox_ObjectFromContainer(guildComboBoxControl)
+end
+
+function Oversharer:HeaderTimeClicked()
+  if Oversharer.scrollList.SortFunction == Oversharer.SortScrollListByTime then
+    Oversharer.scrollList.SortFunction = Oversharer.SortScrollListByTimeRev
+  else
+    Oversharer.scrollList.SortFunction = Oversharer.SortScrollListByTime
+  end
+  Oversharer.scrollList:Update(Oversharer.dataItems)
+end
+
+function Oversharer:HeaderNameClicked()
+  if Oversharer.scrollList.SortFunction == Oversharer.SortScrollListByName then
+    Oversharer.scrollList.SortFunction = Oversharer.SortScrollListByNameRev
+  else
+    Oversharer.scrollList.SortFunction = Oversharer.SortScrollListByName
+  end
+  Oversharer.scrollList:Update(Oversharer.dataItems)
+end
+
+function Oversharer:HeaderQuestClicked()
+end
+
+function Oversharer:HeaderActionClicked()
+end
+
+function Oversharer:EntryRowMouseEnter()
+  d("EntryRowMouseEnter")
+  d(self)
+end
+
+function Oversharer:EntryRowMouseExit()
+  d("EntryRowMouseExit")
+  d(self)
+end
+
+function Oversharer:EntryRowMouseUp(button, upInside)
+  d("EntryRowMouseUp")
+  d(self,button, upInside)
+end
+
+function Oversharer.SendCheckButton_OnToggle(checkButton, isChecked)
+  Oversharer.savedVariables["guildEnabledSend"][Oversharer.savedVariables.selectedGuildId] = isChecked
+end
+
+function Oversharer.ReceiveCheckButton_OnToggle(checkButton, isChecked)
+  Oversharer.savedVariables["guildEnabledReceive"][Oversharer.savedVariables.selectedGuildId] = isChecked
+end
+
+function Oversharer.ChatNotifyCheckButton_OnToggle(checkButton, isChecked)
+  Oversharer.savedVariables["guildEnabledChatNotify"][Oversharer.savedVariables.selectedGuildId] = isChecked
+end
+
+function Oversharer:RestorePosition()
+  local left = self.savedVariables.left
+  local top = self.savedVariables.top
+  OversharerDialog:ClearAnchors()
+  OversharerDialog:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, left, top)
+  local width = Oversharer.savedVariables.width
+  local height = Oversharer.savedVariables.height
+  if (width ~= nil and height ~= nil) and (width > 100 and height > 100) then
+    OversharerDialog:SetDimensions(width, height)
+  else 
+    OversharerDialog:SetDimensions(100,100)
+  end
+end
+
+function Oversharer.ToggleMainWindow()
+  Oversharer.hidden = not Oversharer.hidden
+  OversharerDialog:SetHidden(Oversharer.hidden)
+end
+
+function Oversharer.CloseUI()
+  Oversharer.hidden = true;
+  SCENE_MANAGER:HideTopLevel(OversharerDialog)
+end
+
+function Oversharer.ShowUI()
+  Oversharer.hidden = false;
+  OversharerDialog:SetHidden(Oversharer.hidden)
+end
+
+function Oversharer.HideUI()
+  Oversharer.hidden = true;
+  OversharerDialog:SetHidden(Oversharer.hidden)
+end
+
+function Oversharer:OnGuildSelected(entry)
+  d(entry.guildId, entry.guildText)
+  ZO_CheckButton_SetCheckState(OversharerDialogSendCheck, Oversharer.savedVariables["guildEnabledSend"][entry.guildId])
+  ZO_CheckButton_SetCheckState(OversharerDialogReceiveCheck, Oversharer.savedVariables["guildEnabledReceive"][entry.guildId])
+  ZO_CheckButton_SetCheckState(OversharerDialogChatNotifyCheck, Oversharer.savedVariables["guildEnabledChatNotify"][entry.guildId])
+  Oversharer.savedVariables.selectedGuildId = entry.guildId
+  self.guildComboBox:SetSelectedItemText(entry.guildText)
+  if(self.selectedCallback) then
+      self.selectedCallback(entry.guildId)
+  end
+end
+
+function Oversharer:SelectGuildComboBox(guildId)
+  if self.guildComboBox == nil then self.guildComboBox = Oversharer:FindComboBox() end
+  local entry = self.guildComboEntries[guildId]
+  self.guildComboBox:SetSelectedItemText(entry.guildText)
+end
+
+--[[
 function Oversharer:AddCheckboxRows()
   local sc = WINDOW_MANAGER:GetControlByName("OversharerDialog")
   local numGuilds = GetNumGuilds()
@@ -57,6 +341,7 @@ function Oversharer:AddCheckboxRows()
     row:SetHidden(false)
   end
 end
+--]]
 
 function Oversharer.OnAddOnLoaded(event, addonName)
   if addonName == Oversharer.name then
@@ -65,16 +350,21 @@ function Oversharer.OnAddOnLoaded(event, addonName)
 end
 
 function Oversharer.GuildMemberNoteChanged(event, guildId, displayName, note)
+  if Oversharer.savedVariables["guildEnabledReceive"][guildId] == false then 
+    return 
+  end
   local guildMemberId = GetGuildMemberIndexFromDisplayName(guildId, displayName)
-  -- s = zo_strformat("Member Note Changed - Guild: <<1>> Member: <<2>>\nNew Note:\n<<3>>", GetGuildName(guildId), displayName, note)
-  -- d(s)
   local addonData, noteWithoutData = Oversharer.ExtractAddonDataFromGuildNote(note)
   if addonData ~= nil then
     d("Oversharer Data from Note:" .. addonData)
+    if Oversharer.savedVariables["guildEnabledChatNotify"][Oversharer.savedVariables.selectedGuildId] == true then
+      local s = zo_strformat("Guild: <<1>> Member: <<2>> Data: <<3>>", GetGuildName(guildId), displayName, addonData)
+      CHAT_SYSTEM:AddMessage(s)
+    end
   end
-
 end
 
+--[[
 function Oversharer.ZO_CheckButton_OnToggle(checkButton, isChecked)
   if checkButton.rowId == 0 then
     Oversharer.SetOwnMemberNote(1, "Beigetreten am 27.09.2018 \n Test")
@@ -93,6 +383,12 @@ function Oversharer.ZO_CheckButton_OnToggle(checkButton, isChecked)
   --d(s)
   -- SetGuildMemberNote(*integer* _guildId_, *luaindex* _memberIndex_, *string* _note_)
 end
+--]]
+
+--
+-- STUFF
+--
+
 
 function Oversharer.SetOwnMemberNote(guildId, note)
   local displayName = GetDisplayName()
@@ -119,84 +415,56 @@ function Oversharer.GetOwnMemberNote(guildId)
   return note
 end
 
-function Oversharer.OnOversharerDialog_MoveStop()
-  Oversharer.savedVariables.left = OversharerDialog:GetLeft()
-  Oversharer.savedVariables.top = OversharerDialog:GetTop()
-end
-
-function Oversharer:RestorePosition()
-  local left = self.savedVariables.left
-  local top = self.savedVariables.top
-  OversharerDialog:ClearAnchors()
-  OversharerDialog:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, left, top)
-end
-
-function Oversharer.ToggleMainWindow()
-  Oversharer.hidden = not Oversharer.hidden
-  OversharerDialog:SetHidden(Oversharer.hidden)
-end
-
-function Oversharer.CloseUI()
-  Oversharer.hidden = true;
-  SCENE_MANAGER:HideTopLevel(OversharerDialog)
-end
-
-function Oversharer.ShowUI()
-  Oversharer.hidden = false;
-  OversharerDialog:SetHidden(Oversharer.hidden)
-end
-
-function Oversharer.HideUI()
-  Oversharer.hidden = true;
-  OversharerDialog:SetHidden(Oversharer.hidden)
-end
-
 function Oversharer.ExtractAddonDataFromGuildNote(param)
   local note
   if type(param) == "number" then note = Oversharer.GetOwnMemberNote(param)
   elseif type(param) == "string" then note = param
   else return nil, param
   end
-  -- d(note)
-  -- local osString = string.match(note, "%$%$OS.*%$%$")
+  -- looking for first and last occurrence of the addon pattern
   local osFirst, _ = note:find(Oversharer.pattern)
-  -- d(osFirst)
-  local osLast, _ = note:reverse():find(Oversharer.pattern:reverse()) -- acutally looking for SO$$ in the original string
-  -- d(osLast)
+  local osLast, _ = note:reverse():find(Oversharer.pattern:reverse())
   if (osFirst ~= nil) and (osLast ~= nil) then
     osLast = #note - osLast + 2
-    local osString = note:sub(osFirst, osLast):gsub(Oversharer.pattern, "")
-    if osString ~= nil then
-      -- note = string.gsub(note, "%$%$OS.*%$%$", "")
-      note = note:sub(1, osFirst-1) .. note:sub(osLast, #note)
-      -- Oversharer.SetOwnMemberNote(param, note)
-      return osString, note
+    -- cut out the entire addon string, then remove the patterns to get the "pure" data
+    local addonData = note:sub(osFirst, osLast):gsub(Oversharer.pattern, "")
+    -- if we have data, return the data string and the original note without the datastring
+    if addonData ~= nil then
+      local noteWithoutData = note:sub(1, osFirst-1) .. note:sub(osLast, #note)
+      return addonData, noteWithoutData
     end
   end
   return nil, note
 end
 
-function Oversharer.InjectAddonDataIntoGuildNote(guildId)
-  -- local note = Oversharer.GetOwnMemberNote(guildId)
+function Oversharer.InjectAddonDataIntoGuildNote(guildId, dataString)
   local addonData, noteWithoutData = Oversharer.ExtractAddonDataFromGuildNote(guildId)
-  local newNote = noteWithoutData .. Oversharer.pattern .. "injected" .. Oversharer.pattern
+  local newNote = noteWithoutData .. Oversharer.pattern .. dataString .. Oversharer.pattern
   Oversharer.SetOwnMemberNote(guildId, newNote)
 end
 
 function Oversharer.TestButton_Clicked()
-  -- d("Clicked")
-  -- d("GetNumGuilds:" .. GetNumGuilds())
-  -- for i=1,GetNumGuilds(),1 do
-    -- d("GetGuildName " .. i .. " :" .. GetGuildName(i))
-  -- end
+  local time = zo_strformat("<<1>> <<2>>", GetDateStringFromTimestamp(GetTimeStamp()), GetTimeString())
+  local playerName = zo_strformat("<<1>> (<<2>>)", GetUnitName('player'), GetDisplayName())
+  local uid = zo_strformat("<<1>><<2>><<3>>", GetDisplayName(), GetTimeStamp(), GetGameTimeMilliseconds())
+  d(time, playerName, uid)
+
+  -- local scrollData = ZO_ScrollList_GetDataList(scrollList)
+  -- d(scrollData)
+  
+  -- table.insert(scrollData, ZO_ScrollList_CreateDataEntry(1, {time=time, quest="some quest", action="some action", name=playerName}))
+  table.insert(Oversharer.dataItems, {time=time, quest="some quest", action="some action", name=playerName})
+  Oversharer.scrollList:Update(Oversharer.dataItems)
+  -- ZO_ScrollList_Commit(Oversharer.UnitList)
+
+  -- Oversharer.units[uid] = {time=time, quest="some quest", action="some action", name=playerName}
+  -- Oversharer.UnitList:Refresh()
+  
   local addonData, noteWithoutData = Oversharer.ExtractAddonDataFromGuildNote(1)
   if addonData ~= nil then
-    -- if noteWithoutData ~= nil then
-    --   Oversharer.SetOwnMemberNote(1, noteWithoutData)
-    -- end
     d("Oversharer Data from Note:" .. addonData)
   end
-  Oversharer.InjectAddonDataIntoGuildNote(1)
+  Oversharer.InjectAddonDataIntoGuildNote(Oversharer.savedVariables.selectedGuildId, time.." test")
 end
 
 EVENT_MANAGER:RegisterForEvent(Oversharer.name,EVENT_ADD_ON_LOADED,Oversharer.OnAddOnLoaded)
