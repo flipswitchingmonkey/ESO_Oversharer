@@ -15,6 +15,7 @@ LibScroll\LibScroll.lua
 Lang\en.lua
 Lang\$(language).lua
 
+QuestData.lua
 Oversharer.lua
 Oversharer.xml
 Bindings.xml

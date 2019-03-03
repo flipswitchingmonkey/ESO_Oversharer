@@ -2,7 +2,7 @@
     <Controls>
         <TopLevelControl name="OversharerDialog" mouseEnabled="true" movable="true" clampedToScreen="true" resizeHandleSize="8">
             <Dimensions x="550" y="500" />
-            <DimensionConstraints minX="200" minY="200" />
+            <DimensionConstraints minX="512" minY="200" />
             <Anchor point="BOTTOM" relativeTo="GuiRoot" relativePoint="CENTER" offsetY="-20" />
 
             <Controls>
@@ -67,8 +67,9 @@
                         <Button name="$(parent)Time" font="ZoFontHeader" text="|c91bbffTime|" inherits="ZO_DefaultButton">
                             <OnClicked>
                                 Oversharer.HeaderTimeClicked(self)
-                            </OnClicked>                            <Anchor point="TOPLEFT" />
-                            <Dimensions x="64" y="25" />
+                            </OnClicked>
+                            <Anchor point="TOPLEFT" />
+                            <Dimensions x="128" y="25" />
                         </Button>
                         <Button name="$(parent)Name" font="ZoFontHeader" text="|c91bbffName|" inherits="ZO_DefaultButton">
                             <OnClicked>
@@ -84,12 +85,12 @@
                             <Anchor point="TOPLEFT" relativeTo="$(parent)Name" relativePoint="TOPRIGHT" />
                             <Dimensions x="128" y="25" />
                         </Button>
-                        <Button name="$(parent)Action" font="ZoFontHeader" text="|c91bbffAction|" inherits="ZO_DefaultButton">
+                        <Button name="$(parent)Message" font="ZoFontHeader" text="|c91bbffMessage|" inherits="ZO_DefaultButton">
                             <OnClicked>
-                                Oversharer.HeaderActionClicked(self)
+                                Oversharer.HeaderMessageClicked(self)
                             </OnClicked>
                             <Anchor point="TOPLEFT" relativeTo="$(parent)Quest" relativePoint="TOPRIGHT" />
-                            <Dimensions x="80" y="25" />
+                            <Dimensions x="128" y="25" />
                         </Button>
                     </Controls>
                 </Control>
@@ -114,34 +115,34 @@
             <Dimensions y="30" />
             <Anchor point="RIGHT" relativeTo="$(parent)" />
             <OnMouseEnter>
-                Oversharer.EntryRowMouseEnter(self)
+                <!-- Oversharer.EntryRowMouseEnter(self) -->
             </OnMouseEnter>
             <OnMouseExit>
-                Oversharer.EntryRowMouseExit(self)
+                <!-- Oversharer.EntryRowMouseExit(self) -->
             </OnMouseExit>
             <OnMouseUp>
-                Oversharer.EntryRowMouseUp(self, button, upInside)
+                <!-- Oversharer.EntryRowMouseUp(self, button, upInside) -->
             </OnMouseUp>
             <Controls>
-                <Label name="$(parent)Time" font="ZoFontWinH5" resizeToFitDescendents="true" wrapMode="ELLIPSIS">
+                <Label name="$(parent)Time" font="ZoFontWinH5" resizeToFitDescendents="false" wrapMode="ELLIPSIS">
                     <Anchor point="TOPLEFT" relativeTo="$(parent)" />
                     <Dimensions x="128" y="32" />
                 </Label>
-                <Label name="$(parent)Name" font="ZoFontWinH5" resizeToFitDescendents="true" wrapMode="ELLIPSIS">
+                <Label name="$(parent)Name" font="ZoFontWinH5" resizeToFitDescendents="false" wrapMode="ELLIPSIS">
                     <Anchor point="TOPLEFT" relativeTo="$(parent)Time" relativePoint="TOPRIGHT" />
                     <Dimensions x="128" y="32" />
                 </Label>
-                <Label name="$(parent)Quest" font="ZoFontWinH5" resizeToFitDescendents="true" wrapMode="ELLIPSIS">
+                <Label name="$(parent)Quest" font="ZoFontWinH5" resizeToFitDescendents="false" wrapMode="ELLIPSIS">
                     <Anchor point="TOPLEFT" relativeTo="$(parent)Name"  relativePoint="TOPRIGHT" />
                     <Dimensions x="128" y="32" />
                 </Label>
-                <Label name="$(parent)Action" font="ZoFontWinH5" resizeToFitDescendents="true" wrapMode="ELLIPSIS">
+                <Label name="$(parent)Message" font="ZoFontWinH5" resizeToFitDescendents="false" wrapMode="ELLIPSIS">
                     <Anchor point="TOPLEFT" relativeTo="$(parent)Quest" relativePoint="TOPRIGHT" />
                     <Dimensions x="80" y="32" />
                 </Label>
                 <!-- <Button name="$(parent)DeleteRow" inherits="ZO_ButtonBehaviorClickSound">
 					<Dimensions x="20" y="20" />
-					<Anchor point="TOPLEFT" relativeTo="$(parent)Action" relativePoint="TOPRIGHT" offsetX="5" offsetY="5"/>
+					<Anchor point="TOPLEFT" relativeTo="$(parent)Message" relativePoint="TOPRIGHT" offsetX="5" offsetY="5"/>
 					<Textures normal="EsoUI/Art/Buttons/closebutton_up.dds"
 						pressed="EsoUI/Art/Buttons/closebutton_down.dds"
 						mouseOver="EsoUI/Art/Buttons/closebutton_mouseover.dds"
