@@ -11,6 +11,7 @@ Oversharer.DEFAULT_TEXT = ZO_ColorDef:New(0.4627, 0.737, 0.7647, 1)
 Oversharer.QUEST_ADDED = 1
 Oversharer.QUEST_REMOVED = 2
 Oversharer.QUEST_COMPLETE = 3
+Oversharer.QUEST_FINAL_STEP = 4
 Oversharer.scrollList = nil
 Oversharer.dataItems = {
   [1] = {},
@@ -30,6 +31,14 @@ function Oversharer.strSplit(delim,str)
       end
   end
   return t
+end
+
+local function starts_with(str, start)
+  return str:sub(1, #start) == start
+end
+
+local function ends_with(str, ending)
+  return ending == "" or str:sub(-#ending) == ending
 end
 
 function Oversharer.SetupDataRow(rowControl, data, scrollList)
@@ -166,6 +175,12 @@ function Oversharer:Initialize()
   EVENT_MANAGER:RegisterForEvent(Oversharer.name, EVENT_QUEST_ADDED, Oversharer.OnQuestAdded)
   EVENT_MANAGER:RegisterForEvent(Oversharer.name, EVENT_QUEST_COMPLETE, Oversharer.OnQuestComplete)
   EVENT_MANAGER:RegisterForEvent(Oversharer.name, EVENT_QUEST_REMOVED, Oversharer.OnQuestRemoved)
+  EVENT_MANAGER:RegisterForEvent(Oversharer.name, EVENT_QUEST_ADVANCED, Oversharer.OnQuestAdvanced)
+  EVENT_MANAGER:RegisterForEvent(Oversharer.name, EVENT_EXPERIENCE_GAIN, Oversharer.OnExperienceGain)
+  EVENT_MANAGER:RegisterForEvent(Oversharer.name, EVENT_PLAYER_COMBAT_STATE, Oversharer.OnCombatStateChange)
+  EVENT_MANAGER:RegisterForEvent(Oversharer.name, EVENT_BOSSES_CHANGED, Oversharer.OnBossesChanged)
+  
+  -- EVENT_MANAGER:RegisterForEvent(Oversharer.name, EVENT_COMBAT_EVENT, Oversharer.OnCombatEvent)
   
   -- INIT MAINWINDOWS CONTROLS
   Oversharer:initWindow()
@@ -193,6 +208,7 @@ function Oversharer:initWindow()
   end)
   OversharerDialogTestButton:SetText("TestButton")
   OversharerDialogTestButton:SetHandler("OnClicked", Oversharer.TestButton_Clicked)
+  OversharerDialogResetButton:SetHandler("OnClicked", Oversharer.ResetButton_Clicked)
   OversharerDialogButtonCloseAddon:SetHandler("OnClicked", Oversharer.ToggleMainWindow)
 
   self.OnGuildSelectedCallback = function(_, _, entry)
@@ -211,6 +227,7 @@ function Oversharer:initWindow()
   ZO_CheckButton_SetToggleFunction(OversharerDialogChatNotifyCheck, Oversharer.ChatNotifyCheckButton_OnToggle)
 
   self:RestorePosition()
+  Oversharer.InitialJournalScan()
   Oversharer.InitialGuildNoteRead()
 end
 
@@ -227,6 +244,86 @@ end
 function Oversharer.OnQuestRemoved(event, isCompleted, journalIndex, questName, zoneIndex, poiIndex, questID)
   local encodedString = Oversharer.EncodeDataString(questName, Oversharer.QUEST_REMOVED)
   if encodedString ~= nil then Oversharer.InjectAddonDataIntoGuildNote(encodedString) end
+end
+
+function Oversharer.OnBossesChanged(event)
+  d("OnBossesChanged()")
+end
+
+function Oversharer.OnQuestAdvanced(event, journalIndex, questName, isPushed, isComplete, mainStepChanged)
+  -- d(zo_strformat("<<1>>,<<2>>,isPushed <<3>>,isComplete <<4>>,mainStepChanged <<5>>", journalIndex, questName, isPushed, isComplete, mainStepChanged))
+  -- d(zo_strformat("<<1>>,<<2>>,<<3>>", questName, questId, activeStepTrackerOverrideText))
+  -- if questId ~= nil and starts_with(activeStepTrackerOverrideText, "Return to ") then
+  local questNameJournal, backgroundText, activeStepText, activeStepType, activeStepTrackerOverrideText, completed, tracked, questLevel, pushed, questType, instanceDisplayType = GetJournalQuestInfo(journalIndex)
+  local questId, questData = Oversharer_GetQuestDataByName(questName)
+  if questId ~= nil then
+    if activeStepTrackerOverrideText == questData.en_final then
+      local encodedString = Oversharer.EncodeDataStringWithId(questId, Oversharer.QUEST_FINAL_STEP, Oversharer.GetTimeString())
+      if encodedString ~= nil then Oversharer.InjectAddonDataIntoGuildNote(encodedString) end
+    end
+    --local dataString = Oversharer.EncodeDataStringWithId(questId, Oversharer.QUEST_ADDED)
+    --table.insert(initialQuests, dataString)
+    d(zo_strformat("questId <<1>>, <<2>>", questId, questData.en))
+    d(zo_strformat("activeStepText <<1>>,activeStepTrackerOverrideText <<2>>", activeStepText, activeStepTrackerOverrideText))
+  end
+end
+
+function Oversharer.OnCombatStateChange(event, inCombat)
+  if inCombat then
+    d("GetNumKillingAttacks: " .. GetNumKillingAttacks())
+    for i=1,GetNumKillingAttacks() do
+      d(GetKillingAttackerInfo(i))
+    end
+  end
+end
+
+-- * EVENT_COMBAT_EVENT (*[ActionResult|#ActionResult]* _result_, *bool* _isError_, *string* _abilityName_, *integer* _abilityGraphic_, *[ActionSlotType|#ActionSlotType]* _abilityActionSlotType_, *string* _sourceName_, *[CombatUnitType|#CombatUnitType]* _sourceType_, *string* _targetName_, *[CombatUnitType|#CombatUnitType]* _targetType_, *integer* _hitValue_, *[CombatMechanicType|#CombatMechanicType]* _powerType_, *[DamageType|#DamageType]* _damageType_, *bool* _log_, *integer* _sourceUnitId_, *integer* _targetUnitId_, *integer* _abilityId_)
+function Oversharer.OnCombatEvent(event, result, isError, abilityName, abilityGraphic, abilityActionSlotType, sourceName, sourceType, targetName, targetType, hitValue, powerType, damageType, log, sourceUnitId, targetUnitId, abilityId)
+  d(result, isError, abilityName, abilityGraphic, abilityActionSlotType, sourceName, sourceType, targetName, targetType, hitValue, powerType, damageType, log, sourceUnitId, targetUnitId, abilityId)
+end
+
+-- EVENT_EXPERIENCE_GAIN (*[ProgressReason|#ProgressReason]* _reason_, *integer* _level_, *integer* _previousExperience_, *integer* _currentExperience_, *integer* _championPoints_)
+function Oversharer.OnExperienceGain(event, reason, level, previousExperience, currentExperience, championPoints)
+  d("XP " .. reason .. " " .. currentExperience)
+  if reason==PROGRESS_REASON_ACHIEVEMENT then d("XP Reason: * PROGRESS_REASON_ACHIEVEMENT") end
+  if reason==PROGRESS_REASON_ACTION then d("XP Reason: * PROGRESS_REASON_ACTION") end
+  if reason==PROGRESS_REASON_ALLIANCE_POINTS then d("XP Reason: * PROGRESS_REASON_ALLIANCE_POINTS") end
+  if reason==PROGRESS_REASON_AVA then d("XP Reason: * PROGRESS_REASON_AVA") end
+  if reason==PROGRESS_REASON_BATTLEGROUND then d("XP Reason: * PROGRESS_REASON_BATTLEGROUND") end
+  if reason==PROGRESS_REASON_BOOK_COLLECTION_COMPLETE then d("XP Reason: * PROGRESS_REASON_BOOK_COLLECTION_COMPLETE") end
+  if reason==PROGRESS_REASON_BOSS_KILL then d("XP Reason: * PROGRESS_REASON_BOSS_KILL") end
+  if reason==PROGRESS_REASON_COLLECT_BOOK then d("XP Reason: * PROGRESS_REASON_COLLECT_BOOK") end
+  if reason==PROGRESS_REASON_COMMAND then d("XP Reason: * PROGRESS_REASON_COMMAND") end
+  if reason==PROGRESS_REASON_COMPLETE_POI then d("XP Reason: * PROGRESS_REASON_COMPLETE_POI") end
+  if reason==PROGRESS_REASON_DARK_ANCHOR_CLOSED then d("XP Reason: * PROGRESS_REASON_DARK_ANCHOR_CLOSED") end
+  if reason==PROGRESS_REASON_DARK_FISSURE_CLOSED then d("XP Reason: * PROGRESS_REASON_DARK_FISSURE_CLOSED") end
+  if reason==PROGRESS_REASON_DISCOVER_POI then d("XP Reason: * PROGRESS_REASON_DISCOVER_POI") end
+  if reason==PROGRESS_REASON_DUNGEON_CHALLENGE then d("XP Reason: * PROGRESS_REASON_DUNGEON_CHALLENGE") end
+  if reason==PROGRESS_REASON_EVENT then d("XP Reason: * PROGRESS_REASON_EVENT") end
+  if reason==PROGRESS_REASON_FINESSE then d("XP Reason: * PROGRESS_REASON_FINESSE") end
+  if reason==PROGRESS_REASON_GRANT_REPUTATION then d("XP Reason: * PROGRESS_REASON_GRANT_REPUTATION") end
+  if reason==PROGRESS_REASON_GUILD_REP then d("XP Reason: * PROGRESS_REASON_GUILD_REP") end
+  if reason==PROGRESS_REASON_JUSTICE_SKILL_EVENT then d("XP Reason: * PROGRESS_REASON_JUSTICE_SKILL_EVENT") end
+  if reason==PROGRESS_REASON_KEEP_REWARD then d("XP Reason: * PROGRESS_REASON_KEEP_REWARD") end
+  if reason==PROGRESS_REASON_KILL then d("XP Reason: * PROGRESS_REASON_KILL") end
+  if reason==PROGRESS_REASON_LFG_REWARD then d("XP Reason: * PROGRESS_REASON_LFG_REWARD") end
+  if reason==PROGRESS_REASON_LOCK_PICK then d("XP Reason: * PROGRESS_REASON_LOCK_PICK") end
+  if reason==PROGRESS_REASON_MEDAL then d("XP Reason: * PROGRESS_REASON_MEDAL") end
+  if reason==PROGRESS_REASON_NONE then d("XP Reason: * PROGRESS_REASON_NONE") end
+  if reason==PROGRESS_REASON_OTHER then d("XP Reason: * PROGRESS_REASON_OTHER") end
+  if reason==PROGRESS_REASON_OVERLAND_BOSS_KILL then d("XP Reason: * PROGRESS_REASON_OVERLAND_BOSS_KILL") end
+  if reason==PROGRESS_REASON_PVP_EMPEROR then d("XP Reason: * PROGRESS_REASON_PVP_EMPEROR") end
+  if reason==PROGRESS_REASON_QUEST then d("XP Reason: * PROGRESS_REASON_QUEST") end
+  if reason==PROGRESS_REASON_REWARD then d("XP Reason: * PROGRESS_REASON_REWARD") end
+  if reason==PROGRESS_REASON_SCRIPTED_EVENT then d("XP Reason: * PROGRESS_REASON_SCRIPTED_EVENT") end
+  if reason==PROGRESS_REASON_SKILL_BOOK then d("XP Reason: * PROGRESS_REASON_SKILL_BOOK") end
+  if reason==PROGRESS_REASON_TRADESKILL then d("XP Reason: * PROGRESS_REASON_TRADESKILL") end
+  if reason==PROGRESS_REASON_TRADESKILL_ACHIEVEMENT then d("XP Reason: * PROGRESS_REASON_TRADESKILL_ACHIEVEMENT") end
+  if reason==PROGRESS_REASON_TRADESKILL_CONSUME then d("XP Reason: * PROGRESS_REASON_TRADESKILL_CONSUME") end
+  if reason==PROGRESS_REASON_TRADESKILL_HARVEST then d("XP Reason: * PROGRESS_REASON_TRADESKILL_HARVEST") end
+  if reason==PROGRESS_REASON_TRADESKILL_QUEST then d("XP Reason: * PROGRESS_REASON_TRADESKILL_QUEST") end
+  if reason==PROGRESS_REASON_TRADESKILL_RECIPE then d("XP Reason: * PROGRESS_REASON_TRADESKILL_RECIPE") end
+  if reason==PROGRESS_REASON_TRADESKILL_TRAIT then d("XP Reason: * PROGRESS_REASON_TRADESKILL_TRAIT") end
 end
 
 function Oversharer:RefreshGuildList()
@@ -405,17 +502,54 @@ function Oversharer:AddCheckboxRows()
 end
 --]]
 
+function Oversharer.InitialJournalScan()
+  d("Scanning Journal for valid quests...")
+  local initialQuests = {}
+  for i=1,GetNumJournalQuests(),1 do
+    if IsValidQuestIndex(i) then
+      local questName, backgroundText, activeStepText, activeStepType, activeStepTrackerOverrideText, completed, tracked, questLevel, pushed, questType, instanceDisplayType = GetJournalQuestInfo(i)
+      local questId, questData = Oversharer_GetQuestDataByName(questName)
+      -- d(zo_strformat("<<1>>,<<2>>,<<3>>", questName, questId, questData))
+      if questId ~= nil then
+        local dataString = ""
+        if activeStepTrackerOverrideText == questData.en_final then
+          dataString = Oversharer.EncodeDataStringWithId(questId, Oversharer.QUEST_FINAL_STEP, Oversharer.GetTimeString())
+        else
+          -- if encodedString ~= nil then Oversharer.InjectAddonDataIntoGuildNote(encodedString) end
+          dataString = Oversharer.EncodeDataStringWithId(questId, Oversharer.QUEST_ADDED, "00.00.00 00:00:00")
+        end
+        table.insert(initialQuests, dataString)
+      end
+    end
+  end
+  -- d(initialQuests)
+  local joinedDataString = table.concat(initialQuests, ",")
+  -- d(joinedDataString)
+  for i=1,GetNumGuilds()+1,1 do
+    if DoesPlayerHaveGuildPermission(i, GUILD_PERMISSION_NOTE_EDIT) == true then
+      if Oversharer.savedVariables["guildEnabledSend"][i] == true then
+        Oversharer.InjectAddonDataIntoGuildNote(joinedDataString)
+      end
+    end
+  end
+end
+
 function Oversharer.InitialGuildNoteRead()
   for i=1,GetNumGuilds()+1,1 do
     if DoesPlayerHaveGuildPermission(i, GUILD_PERMISSION_NOTE_READ) == true then
       if Oversharer.savedVariables["guildEnabledReceive"][i] == true then 
         for j=1,GetNumGuildMembers(i)+1,1 do
-          local name, note, rankIndex, playerStatus, secsSinceLogoff = GetGuildMemberInfo(i, j)
-          if note ~= nil then
-            local addonData, noteWithoutData = Oversharer.ExtractAddonDataFromGuildNote(note)
-            if addonData ~= nil then
-              -- d(addonData)
-              Oversharer.AddRow(addonData,name)
+          if name ~= GetDisplayName() then
+            local name, note, rankIndex, playerStatus, secsSinceLogoff = GetGuildMemberInfo(i, j)
+            if note ~= nil then
+              local addonData, noteWithoutData = Oversharer.ExtractAddonDataFromGuildNote(note)
+              if addonData ~= nil then
+                -- d(addonData)
+                for k, val in pairs(addonData) do
+                  Oversharer.AddRow(val, name)
+                end
+                -- Oversharer.AddRow(addonData,name)
+              end
             end
           end
         end
@@ -443,7 +577,10 @@ function Oversharer.GuildMemberNoteChanged(event, guildId, displayName, note)
     --   local s = zo_strformat("Guild: <<1>> Member: <<2>> Data: <<3>>", GetGuildName(guildId), displayName, addonData)
     --   CHAT_SYSTEM:AddMessage(s)
     -- end
-    Oversharer.AddRow(addonData, displayName)
+    for k, val in pairs(addonData) do
+      Oversharer.AddRow(val, displayName)
+    end
+  -- Oversharer.AddRow(addonData, displayName)
   end
 end
 
@@ -465,6 +602,9 @@ function Oversharer.AddRow(dataString, playerName)
   -- end
   local data = Oversharer.DecodeDataString(dataString, playerName)
   if data == nil then return end
+  for k, v in pairs(Oversharer.dataItems[Oversharer.savedVariables.selectedGuildId]) do
+    if v.time == data.time and v.name == data.name and v.quest == data.quest and v.message == data.message then return end
+  end
   -- table.insert(Oversharer.dataItems[Oversharer.savedVariables.selectedGuildId], {time=data[1], quest=questName, message=msg, name=playerName})
   table.insert(Oversharer.dataItems[Oversharer.savedVariables.selectedGuildId], data)
   Oversharer.scrollList:Update(Oversharer.dataItems[Oversharer.savedVariables.selectedGuildId])
@@ -474,13 +614,18 @@ function Oversharer.AddRow(dataString, playerName)
   end
 end
 
-function Oversharer.EncodeDataString(questName, action)
-  local time = Oversharer.GetTimeString()
+function Oversharer.EncodeDataString(questName, action, time)
+  if time == nil then time = Oversharer.GetTimeString() end
   local questId, questData = Oversharer_GetQuestDataByName(questName)
   if questData == nil then
     d("No Quest Data found - maybe not a daily quest or no translation?")
     return nil
   end
+  return zo_strformat("<<1>>##<<2>>##<<3>>", time, questId, action)
+end
+
+function Oversharer.EncodeDataStringWithId(questId, action, time)
+  if time == nil then time = Oversharer.GetTimeString() end
   return zo_strformat("<<1>>##<<2>>##<<3>>", time, questId, action)
 end
 
@@ -499,6 +644,7 @@ function Oversharer.DecodeDataString(dataString, playerName)
   if action==Oversharer.QUEST_ADDED then msg = "Started Quest."
   elseif action==Oversharer.QUEST_REMOVED then msg = "Abandoned Quest."
   elseif action==Oversharer.QUEST_COMPLETE then msg = "Completed Quest."
+  elseif action==Oversharer.QUEST_FINAL_STEP then msg = "Final Step."
   end
   return {time=data[1], quest=questName, message=msg, name=playerName}
 end
@@ -520,7 +666,7 @@ function Oversharer.ZO_CheckButton_OnToggle(checkButton, isChecked)
   end
   --s = zo_strformat("Member Note Changed - Guild: <<1>> Member: <<2>> Note: <<3>>", GetGuildName(guildId), displayName, note)
   --d(s)
-  -- SetGuildMemberNote(*integer* _guildId_, *luaindex* _memberIndex_, *string* _note_)
+  -- SetGuildMemberNote(*integer* _guildId_, *luaindex* _memberIndex, note_)
 end
 --]]
 
@@ -578,7 +724,8 @@ function Oversharer.ExtractAddonDataFromGuildNote(param)
     -- if we have data, return the data string and the original note without the datastring
     if addonData ~= nil then
       local noteWithoutData = note:sub(1, osFirst-1) .. note:sub(osLast, #note)
-      return addonData, noteWithoutData
+      local datastrings = Oversharer.strSplit(",",addonData)
+      return datastrings, noteWithoutData
     end
   end
   return nil, note
@@ -601,12 +748,36 @@ function Oversharer.GetTimeString()
 end
 
 function Oversharer.TestButton_Clicked()
-  local time = Oversharer.GetTimeString()
-  local playerName = zo_strformat("<<1>> (<<2>>)", GetUnitName('player'), GetDisplayName())
-  -- d(time, playerName, uid)
-  local s = zo_strformat("<<1>>##<<2>>##<<3>>",time,"5743",Oversharer.QUEST_ADDED)
-  --Oversharer.AddRow(s,GetDisplayName())
-  Oversharer.InjectAddonDataIntoGuildNote(s)
+  d("Scanning Journal for valid quests...")
+  local initialQuests = {}
+  for i=1,GetNumJournalQuests(),1 do
+    if IsValidQuestIndex(i) then
+      local questName, backgroundText, activeStepText, activeStepType, activeStepTrackerOverrideText, completed, tracked, questLevel, pushed, questType, instanceDisplayType = GetJournalQuestInfo(i)
+      local questId, questData = Oversharer_GetQuestDataByName(questName)
+      d(zo_strformat("<<1>>,<<2>>,<<3>>", questName, questId, activeStepTrackerOverrideText))
+      if questId ~= nil and starts_with(activeStepTrackerOverrideText, "Return to ") then
+        local dataString = Oversharer.EncodeDataStringWithId(questId, Oversharer.QUEST_FINAL_STEP, Oversharer.GetTimeString())
+        table.insert(initialQuests, dataString)
+      end
+    end
+  end
+  -- d(initialQuests)
+  local joinedDataString = table.concat(initialQuests, ",")
+  -- d(joinedDataString)
+  for i=1,GetNumGuilds()+1,1 do
+    if DoesPlayerHaveGuildPermission(i, GUILD_PERMISSION_NOTE_EDIT) == true then
+      if Oversharer.savedVariables["guildEnabledSend"][i] == true then
+        Oversharer.InjectAddonDataIntoGuildNote(joinedDataString)
+      end
+    end
+  end
+end
+
+function Oversharer.ResetButton_Clicked()
+  Oversharer.dataItems[Oversharer.savedVariables.selectedGuildId] = {}
+  Oversharer.InitialJournalScan()
+  Oversharer.InitialGuildNoteRead()
+  Oversharer.scrollList:Update(Oversharer.dataItems[Oversharer.savedVariables.selectedGuildId])
 end
 
 EVENT_MANAGER:RegisterForEvent(Oversharer.name,EVENT_ADD_ON_LOADED,Oversharer.OnAddOnLoaded)
